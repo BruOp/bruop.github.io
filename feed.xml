@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Bruno Opsenica</title>
+    <description>My personal website where you can see (and play with) some of my computer graphics projects.
+</description>
+    <link>http://yourdomain.com/</link>
+    <atom:link href="http://yourdomain.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Fri, 28 Oct 2016 17:12:58 -0400</pubDate>
+    <lastBuildDate>Fri, 28 Oct 2016 17:12:58 -0400</lastBuildDate>
+    <generator>Jekyll v3.1.6</generator>
+    
+      <item>
+        <title>Ray Tracer</title>
+        <description>&lt;p&gt;In winter of 2014, I took at course on computer graphics at the University of Toronto. Part of the final project was to create a ray tracer, a type of renderer shoots ‘rays’ through each pixel and finds whether that ray intersects with the scene. If the ray hits an object, then colour is calculated using a Phong shading model.&lt;/p&gt;
+
+&lt;div class=&quot;post-image-wrapper&quot;&gt;
+  &lt;img src=&quot;/assets/images/raytracer1.png&quot; alt=&quot;&quot; an=&quot;&quot; image=&quot;&quot; rendered=&quot;&quot; using=&quot;&quot; the=&quot;&quot; ray=&quot;&quot; tracer=&quot;&quot; width=&quot;1024&quot; height=&quot;768&quot; /&gt;
+      
+  An image rendered using the ray tracer. You can see the reflection,
+  refraction and shadows generated through the use of additional rays after
+  intersection. Each pixel is sampled stochastically 64 times.
+&lt;/div&gt;
+
+&lt;p&gt;This model can be further extended by sending out additional rays on intersection:
+- Reflection: send a ray in the direction of ideal reflection and gather color from any additional intersections.
+- Refraction: shooting another ray inside the object according to Snell’s law, and then again on exiting the material.
+- Shadows: perform a check for direct illumination by sending additional rays towards light sources. If any other intersections occur along that path, then the point is in shadow.&lt;/p&gt;
+
+&lt;p&gt;Additionally, stochastic sampling was added to provide:
+- Anti-Aliasing
+- Imperfect reflections and refraction
+- Depth of field
+- Area light sources (soft shadows)&lt;/p&gt;
+
+&lt;div class=&quot;post-image-wrapper&quot;&gt;
+  &lt;img src=&quot;/assets/images/raytracer2.png&quot; alt=&quot;&quot; an=&quot;&quot; image=&quot;&quot; rendered=&quot;&quot; using=&quot;&quot; the=&quot;&quot; ray=&quot;&quot; tracer=&quot;&quot; width=&quot;1024&quot; height=&quot;768&quot; /&gt;
+  
+  This scene was rendered earlier and features compount objects, but here each pixel is sampled only 36 times. Additionally the depth of field effect and imperfect reflections is much more pronounced here.
+&lt;/div&gt;
+
+&lt;p&gt;Overall, I’m not particularly happy with the images produced by this renderer. The refractions in particular look strange, the depth of field effect is poor and this was a while before I thought about gamma correction. It was also written in C++ before I knew much about programming, much less C++!&lt;/p&gt;
+</description>
+        <pubDate>Wed, 26 Oct 2016 11:32:21 -0400</pubDate>
+        <link>http://yourdomain.com/2016/10/26/ray-tracer.html</link>
+        <guid isPermaLink="true">http://yourdomain.com/2016/10/26/ray-tracer.html</guid>
+        
+        
+      </item>
+    
+  </channel>
+</rss>
