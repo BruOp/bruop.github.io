@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Bruno Opsenica's Blog]]></title><description><![CDATA[A blog about learning 3D programming]]></description><link>https://bruop.github.com</link><generator>GatsbyJS</generator><lastBuildDate>Wed, 17 Feb 2021 16:29:44 GMT</lastBuildDate><item><title><![CDATA[More (Robust) Frustum Culling]]></title><description><![CDATA[Introduction In my last blog post on frustum culling, I mentioned briefly that it was possible for false negatives to occur when the…]]></description><link>https://bruop.github.com/improved_frustum_culling/</link><guid isPermaLink="false">https://bruop.github.com/improved_frustum_culling/</guid><pubDate>Wed, 17 Feb 2021 15:00:00 GMT</pubDate><content:encoded>&lt;h2&gt;Introduction&lt;/h2&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Bruno Opsenica's Blog]]></title><description><![CDATA[A blog about learning 3D programming]]></description><link>https://bruop.github.com</link><generator>GatsbyJS</generator><lastBuildDate>Fri, 05 Mar 2021 23:15:02 GMT</lastBuildDate><item><title><![CDATA[More (Robust) Frustum Culling]]></title><description><![CDATA[Introduction In my last blog post on frustum culling, I mentioned briefly that it was possible for false negatives to occur when the…]]></description><link>https://bruop.github.com/improved_frustum_culling/</link><guid isPermaLink="false">https://bruop.github.com/improved_frustum_culling/</guid><pubDate>Wed, 17 Feb 2021 15:00:00 GMT</pubDate><content:encoded>&lt;h2&gt;Introduction&lt;/h2&gt;
 &lt;p&gt;In my &lt;a href=&quot;/frustum_culling&quot;&gt;last blog post&lt;/a&gt; on frustum culling, I mentioned briefly that it was possible for false negatives to occur when the vertices of an oriented bounding box all lay outside the frustum, despite the two volumes actually intersecting. To be clear, a &lt;strong&gt;false negative&lt;/strong&gt; in this case means that the object is flagged as “out of view” and will not be rendered. This results in its absence in our final rendered frame, and in certain conditions it might flicker in and out of existence as bounding box vertices suddenly overlap. This is a worse outcome than the alternative of a &lt;strong&gt;false positive&lt;/strong&gt;, where we submit an object for rendering despite it being out of view, as a false positive has no effect on the final frame’s appearance, only the amount of time it takes to produce it. In this post, we’ll introduce a new culling method that produces no false negatives (or false positives) and explain how we can produce an SIMD optimized implementation using &lt;a href=&quot;https://ispc.github.io/&quot;&gt;Intel’s ISPC&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;The most obvious failure case of the previous vertex-based test is when the near plane of the frustum is inside the bounding box itself while the bounding box is large enough that its vertices lie outside the frustum. This case is conceptually easy to test for: simply check whether any of the view frustum origin lies inside the OBB. However, we’d probably want to perform this test in view space, which means we’ll need to transform our OBB vertices twice.&lt;/p&gt;
 &lt;p&gt;A more problematic failure case is when only the edges of our two volumes meet, and the vertices of both volumes lie completely beyond the other object’s volume. This case is just as likely to arise, especially if your scene includes objects that are particularly elongated, or in the case of “edge-on-edge” intersections. A more robust solution will need to handle both of these cases and many others if we don’t want objects flickering in and out of view.&lt;/p&gt;
@@ -1175,7 +1175,407 @@ A_{30} v_x + A_{31} v_y + A_{32} v_z + A_{33} v_w \\
 &lt;p&gt;Additionally, I just want to re-iterate that &lt;em&gt;I am not experienced with SIMD intrinsics&lt;/em&gt;. If you know of a better way to perform any parts of the above, please let me know in the comments, by email or through twitter &lt;a href=&quot;https://twitter.com/BruOps&quot;&gt;@BruOps&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;There is also a subtle problem with my culling code. If the OBB is large compared to the view frustum, then this code will produce false negatives. We should probably also perform the reciprocal test and check whether any of the frustum corners fall within the OBB. This is really only a problem at the near plane, so we might be able to get away with just testing those four corners.&lt;/p&gt;
 &lt;p&gt;Finally, I just want to highlight that while profiling with PIX I encountered pretty high variability in CPU execution times. I expected CPU timings to vary by 10-20% but I often had events exhibit single frame “spikes” where execution times were orders of magnitude higher than usual (within a capture of a few seconds). Other times, there would be smaller spikes that were only 2-5 times larger. Taking a look at the timeline, I saw that in these cases the thread my code was running on would stall, but it seems pretty non-deterministic since it’d happen for a few frames, and then wouldn’t. The camera wasn’t moving at all during the recordings, and as far as I know there were no allocations during the frame, so I’m not sure what was causing the variability between frames.&lt;/p&gt;
-&lt;p&gt;Thanks for reading til the end! Shout out to the folks on the &lt;a href=&quot;https://discord.com/invite/Eb7P3wH&quot;&gt;Graphics Programming discord&lt;/a&gt; who provided guidance and rubber ducking. I hope you and your loved ones have a happy holiday, and that 2021 is kinder to us all.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Image Based Lighting with Multiple Scattering]]></title><description><![CDATA[Introduction and Background Recently I decided to implement image based lighting in BGFX, since I had never done so before and it’s a great…]]></description><link>https://bruop.github.com/ibl/</link><guid isPermaLink="false">https://bruop.github.com/ibl/</guid><pubDate>Mon, 19 Aug 2019 15:00:00 GMT</pubDate><content:encoded>&lt;h2&gt;Introduction and Background&lt;/h2&gt;
+&lt;p&gt;Thanks for reading til the end! Shout out to the folks on the &lt;a href=&quot;https://discord.com/invite/Eb7P3wH&quot;&gt;Graphics Programming discord&lt;/a&gt; who provided guidance and rubber ducking. I hope you and your loved ones have a happy holiday, and that 2021 is kinder to us all.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Zec Project Description]]></title><description><![CDATA[Zec is renderer that wraps the D3D12 API. The primary goal is to provide example implementations of various computer graphics techniques…]]></description><link>https://bruop.github.com/portfolio/projects/</link><guid isPermaLink="false">https://bruop.github.com/portfolio/projects/</guid><pubDate>Thu, 05 Mar 2020 17:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Zec is renderer that wraps the D3D12 API. The primary goal is to provide example implementations of various computer graphics techniques such as clustered shading, PBR shading, etc. and the secondary goal is to do it efficiently using a simple, thin abstraction around D3D12.&lt;/p&gt;
+&lt;p&gt;Currently, the following implementations have been created, in part as a way of &lt;a href=&quot;https://en.wikipedia.org/wiki/Eating_your_own_dog_food&quot;&gt;dogfooding&lt;/a&gt; my rendering abstraction:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Image based lighting with multiple scattering (see description below for &lt;a href=&quot;#bae&quot;&gt;bae&lt;/a&gt; and &lt;a href=&quot;https://bruop.github.io/ibl&quot;&gt;this blog post&lt;/a&gt;)&lt;/li&gt;
+&lt;li&gt;ISPC accelerated view frustum culling, as documented in &lt;a href=&quot;https://bruop.github.io/improved_frustum_culling/&quot;&gt;another blog post&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Clustered forward shading using compute shaders&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Clustered Forward Shading&lt;/h3&gt;
+&lt;p&gt;Largely based off &lt;a href=&quot;http://www.cse.chalmers.se/~uffe/clustered_shading_preprint.pdf&quot;&gt;Olsson et al, 2012&lt;/a&gt;, this implementation uses compute shaders to populate a buffer containing per-cluster index lists, which are then used to index into the global light lists.&lt;/p&gt;
+&lt;p&gt;The current implementation supports binning of both point lights and spot lights using clusters defined as AABBs in view-space. The intersection test used for the spot lights is based of &lt;a href=&quot;https://bartwronski.com/2017/04/13/cull-that-cone/&quot;&gt;Bart Wronski’s excellent blog post&lt;/a&gt;, which works well with Olsson’s view-space z-partitioning scheme which attempts to maintain clusters that are as cubical as possible.&lt;/p&gt;
+&lt;p&gt;One difference from Olsson’s paper is that I implemented a two-phase partitioning scheme such that the clusters between the near-plane and some user defined “mid-plane” use a linear partitioning scheme, while those beyond the mid-plane use the Olsson partitioning scheme. The Olsson scheme produces very small clusters close to the camera, and using a linear scheme (while providing a worse fit for the bounding sphere tests) provides about a 30% memory reduction while still keeping the clusters small in view space.&lt;/p&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/a80e868d81115b6193b4507887c1c86e/0d4f8/clustered_debug_forward.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 56.111111111111114%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAIAAADwazoUAAAACXBIWXMAAC4jAAAuIwF4pT92AAACpElEQVQoz2Mw0DKztvUMcgvICPA3tDNs7unsr2tzt7ExtbZlYGCQFpTWVdJrmlJeWpCrLCwrJikgIyNtbu1obuagoqLGoCavbW7hoi6jkxIaauKi2zWhuyKjWEFG3t3fn4OTsS69uKuhdeqMzu78OjVJJXk1aVlVcXNrextrdxkpNQYlBW07Gx8DPc2igtSALI/lK+YVxCaaGholpiSnpXiU5cbW1dROqq1a1DLB1tBGxUAxrjQ4LD46JDApIiSLQUZK1cLcTZCPLzQ6cPqWnsVLZ3uamXu7ulRnpqWF+KiqSPn6+Ya4OU+q7rQ3dvSKct9xdkNhdVFkeFp722wGYWFJfQMLNj4297jIFz/vr1k5z8HMMik0prusNNTFVd/QyMDYzMZEe3H/VC83j4LWxBOXtqVnp3v7hvV0z2SQlBdX1lBzDLOMy447fGRrX31RhktAUECAu4NDTFigrpGBobp2plt4a8VMP/cIl3C3GVP7Y6PibMytCzLyGfildEUl5RVVFZQVZATZWPWkJaINff3TguTVlEOcEhiYmVx0NFv884szt8TGb1DQiLUzcXQL99RIMFcLN2Ng5lZiZuFgAANmZiZmBgYTXaPy7CQnB8sV8xalZEdkpgWY6mq5BiywC99la57lbRGkYaErEqcrkW/JwMTMDtTGyMjIysLMyMgAhBqmGnEB9s5W+r1t+Q01OTWdGUbWWi4eDVpW/U56QWaqdopKKkLmknzuyiCNTCxM3AJcvELc7FysQD6nImdEksOaBTNXzp91bu+hs5f3ymjoyksCQ7rExcBfW8VUR9tE1lyRy0GWQUBAQExKTERMWNdcU9dcg5eLT8VMKSDDPTY0ID0lua25PS8vW13DWkczINYv18bIRU/H1NrKVc/CSNxcGQAht7jhBgwGhQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Shaded view. There are 1024 point lights and 128 spot lights distributed randomly throughout the scene&quot;
+        title=&quot;Shaded view. There are 1024 point lights and 128 spot lights distributed randomly throughout the scene&quot;
+        src=&quot;/static/a80e868d81115b6193b4507887c1c86e/eefce/clustered_debug_forward.png&quot;
+        srcset=&quot;/static/a80e868d81115b6193b4507887c1c86e/dfaee/clustered_debug_forward.png 180w,
+/static/a80e868d81115b6193b4507887c1c86e/4d463/clustered_debug_forward.png 360w,
+/static/a80e868d81115b6193b4507887c1c86e/eefce/clustered_debug_forward.png 720w,
+/static/a80e868d81115b6193b4507887c1c86e/dabea/clustered_debug_forward.png 1080w,
+/static/a80e868d81115b6193b4507887c1c86e/87339/clustered_debug_forward.png 1440w,
+/static/a80e868d81115b6193b4507887c1c86e/0d4f8/clustered_debug_forward.png 1600w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Shaded view. There are 1024 point lights and 128 spot lights distributed randomly throughout the scene&lt;/figcaption&gt;
+  &lt;/figure&gt;
+&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/2423ccdea66a1f4a3fa9a205840ecc5f/0d4f8/clustered_debug_view.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 56.111111111111114%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAIAAADwazoUAAAACXBIWXMAAC4jAAAuIwF4pT92AAACZklEQVQozx1R21LaUBTNL7TvtDAKRpCEkIQkICEnCdZbRaniBVAcjLa2UztDq7XKRQTJ5VxAO51pO9OHPraf0J/raWf27NkPe6291tpMuoG5YxI/w4kWmjsl4S4O+VBsTuaeXzzm9UeaLax3c2VkgBHIjyx1YKU6C5GLhSfn84suI++idINIVSxVCX9Mkq9IpE3pcKxLwl8noYcH9gKLNZxbR/IuzpYCfSmwuY4dv9aXA0Y8wNoGypVgZhexZyT+lrDvyJwzZj8Pp3/3Qg8e2w5mPmDhEPMnY2UH51egJfSK7JWZHTBSDQHbNwzX1AapIxy5GqvtW2Ub8V/62T/vo79up8duyEfJnqtWA7GO1S1sSj072Qb6iMmVkFH07UTbmv3EOyR+OuY7XrbsJ8+96M/hFPSnAp8KUfp9c+0uXSPZDWjmhgUwkuqYAcC15H4xfA74a2pBqhFhH2ubKPEGRW5Q+JvLncCC7WsNv7Di5595tKzs0DDuaDqMJd4U+R41YAA3Vwoyu0TbhPIejl6jp9/d0A+PbUFL7CsVnD7AJvuR7gPg0eNUwn9w7FK3KRKqW0jaJ/R5Ug0nXyPuNBCr3kwL5haGwiHiXhJT6NBoTH00vwrlGmbsVNfmO7o9ml+DWvlf5uomVCpIL45AYSRXvFgLiXWY2fYpaXYtyC8HVKayBbkTzJi6C2xIuy0PjGKQX8Wg4BnAyy96KWcy1b6PXd4LzlhfoaImWoUOuLCE5PpEaE6YjHooFRw1UVVn9xTxIJNpaPE9RWqkjSZbdqI7TqThsC8cST/iFp00aAqWkzYdbslJ2c5f6SzqEBWXOv8AAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Clustered Shading Debug view. There are 1024 point lights and 128 spot lights distributed randomly throughout the scene&quot;
+        title=&quot;Clustered Shading Debug view. There are 1024 point lights and 128 spot lights distributed randomly throughout the scene&quot;
+        src=&quot;/static/2423ccdea66a1f4a3fa9a205840ecc5f/eefce/clustered_debug_view.png&quot;
+        srcset=&quot;/static/2423ccdea66a1f4a3fa9a205840ecc5f/dfaee/clustered_debug_view.png 180w,
+/static/2423ccdea66a1f4a3fa9a205840ecc5f/4d463/clustered_debug_view.png 360w,
+/static/2423ccdea66a1f4a3fa9a205840ecc5f/eefce/clustered_debug_view.png 720w,
+/static/2423ccdea66a1f4a3fa9a205840ecc5f/dabea/clustered_debug_view.png 1080w,
+/static/2423ccdea66a1f4a3fa9a205840ecc5f/87339/clustered_debug_view.png 1440w,
+/static/2423ccdea66a1f4a3fa9a205840ecc5f/0d4f8/clustered_debug_view.png 1600w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Clustered Shading Debug view. There are 1024 point lights and 128 spot lights distributed randomly throughout the scene&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;One thing to note is that I used 32-byte &lt;code class=&quot;language-text&quot;&gt;uint&lt;/code&gt;s to store light indices, but this is overkill for the number of lights I expect to support. I could easily get away with 16-bits for the index list entries BUT my laptop’s 960m lacks the feature support for 16-bit arithmetic 😢&lt;/p&gt;
+&lt;h3&gt;ISPC Accelerated View Frustum Culling&lt;/h3&gt;
+&lt;p&gt;Most of the details are in two blog posts on this very site (&lt;a href=&quot;https://bruop.github.io/frustum_culling/&quot;&gt;part 1&lt;/a&gt;, and &lt;a href=&quot;https://bruop.github.io/improved_frustum_culling/&quot;&gt;part 2&lt;/a&gt;), but to summarize, the view culling transforms model-space AABBs to view space and performs a check using the &lt;a href=&quot;https://en.wikipedia.org/wiki/Hyperplane_separation_theorem&quot;&gt;separating axis theorem&lt;/a&gt; against the view frustum to determine whether the object is in view or not. &lt;a href=&quot;https://ispc.github.io/&quot;&gt;ISPC&lt;/a&gt; is used to vectorize the system and test 8 AABBs at once.&lt;/p&gt;
+&lt;p&gt;For 10,000 AABBs, &lt;strong&gt;the system can produce a visibility list in about 0.3ms&lt;/strong&gt; using a single core on my i5 6600k.&lt;/p&gt;
+&lt;p&gt;Here’s a graphic of how this reduces wasted vertex work on the GPU as well, as without culling the GPU ends up spending time executing vertex shader work without any corresponding fragment/pixel shader output:&lt;/p&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/3ca5cae4ffca18e8e6581fa3e6609714/973bc/unculled_occupancy.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 8.333333333333332%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAACCAIAAADXZGvcAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAUElEQVQI12XKwQ2AIAxAURYETdygrWElWpLiUaU6o8hJQ/LyT98RTQAe8dsAEFpjXFaasQ/0H/rjHRu/6sA4mXCVfGm+N6marTRyFj60Sbs+LzE7GV5g3h0AAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Occupancy without culling&quot;
+        title=&quot;Occupancy without culling&quot;
+        src=&quot;/static/3ca5cae4ffca18e8e6581fa3e6609714/eefce/unculled_occupancy.png&quot;
+        srcset=&quot;/static/3ca5cae4ffca18e8e6581fa3e6609714/dfaee/unculled_occupancy.png 180w,
+/static/3ca5cae4ffca18e8e6581fa3e6609714/4d463/unculled_occupancy.png 360w,
+/static/3ca5cae4ffca18e8e6581fa3e6609714/eefce/unculled_occupancy.png 720w,
+/static/3ca5cae4ffca18e8e6581fa3e6609714/dabea/unculled_occupancy.png 1080w,
+/static/3ca5cae4ffca18e8e6581fa3e6609714/87339/unculled_occupancy.png 1440w,
+/static/3ca5cae4ffca18e8e6581fa3e6609714/973bc/unculled_occupancy.png 2292w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Occupancy without culling&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;With culling, the wasted work is reduced greatly:&lt;/p&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/3fb1275c8d6ad72cc051d18bb13ee936/9b4a4/culled_occupancy.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 8.333333333333332%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAACCAIAAADXZGvcAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAUklEQVQI1zWICQrAIAwEfbvxeIIJaGyl1uOVNRZhWGZHgbeCM+AAvNGym33/ctDaHnZRNAuNQvOmfuHI2DL2jC/TkpZCjculdMaaxBuvGJ4YKn+HHEQ+yuKkKwAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Occupancy with culling&quot;
+        title=&quot;Occupancy with culling&quot;
+        src=&quot;/static/3fb1275c8d6ad72cc051d18bb13ee936/eefce/culled_occupancy.png&quot;
+        srcset=&quot;/static/3fb1275c8d6ad72cc051d18bb13ee936/dfaee/culled_occupancy.png 180w,
+/static/3fb1275c8d6ad72cc051d18bb13ee936/4d463/culled_occupancy.png 360w,
+/static/3fb1275c8d6ad72cc051d18bb13ee936/eefce/culled_occupancy.png 720w,
+/static/3fb1275c8d6ad72cc051d18bb13ee936/dabea/culled_occupancy.png 1080w,
+/static/3fb1275c8d6ad72cc051d18bb13ee936/87339/culled_occupancy.png 1440w,
+/static/3fb1275c8d6ad72cc051d18bb13ee936/9b4a4/culled_occupancy.png 2274w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Occupancy with culling&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;h3&gt;Render Pass Abstraction&lt;/h3&gt;
+&lt;p&gt;Zec also contains an optional “Render Pass” abstraction (but it’s not necessary) that will manage pass resource creation and transitions between passes. For instance, if you have a depth pre-pass that “outputs” a depth buffer and other passes mark as an “input” that will be sampled from pixel or fragment shaders, the render pass system will insert the appropriate resource transition at the beginning of the first pass that consumes the depth buffer “automatically”.&lt;/p&gt;
+&lt;p&gt;Additionally, passes can submit work on the asynchronous compute queue and the abstraction will submit that work separately and even insert cross queue barriers when subsequent passes use the outputs. However, I haven’t robustly tested this part of the system yet and I know that it currently breaks when the resources are transitioned using a command list created from the compute queue.&lt;/p&gt;
+&lt;p&gt;Future plans include:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Better support for async compute&lt;/li&gt;
+&lt;li&gt;Multi-threaded command list recording. Each pass already gets its own command list, but I haven’t yet introduced any threading into the library or application.&lt;/li&gt;
+&lt;li&gt;Better support for multiple sets of passes. Right now each list of passes is it’s own heavyweight structure, making it annoying to support switching between them during runtime. It’d be nicer to have a pool of passes and then lightweight lists that describe recording of commands.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Bruno’s Awful Examples (bae)&lt;/h2&gt;
+&lt;p&gt;Similar to Zec, but this project used BGFX to abstract away OpenGL/DirectX 11. Development ended in late September 2019.&lt;/p&gt;
+&lt;p&gt;The examples include:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Tone Mapping&lt;/li&gt;
+&lt;li&gt;Forward Rendering&lt;/li&gt;
+&lt;li&gt;Deferred Rendering&lt;/li&gt;
+&lt;li&gt;Image Based Lighting&lt;/li&gt;
+&lt;li&gt;Cascaded Shadow Mapping&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3&gt;Tone Mapping&lt;/h3&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/97d98e9c878f44b6813ca81a7a8604ae/f3baa/01-tonemapping.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 56.111111111111114%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAYAAAB/Ca1DAAAACXBIWXMAAAsTAAALEwEAmpwYAAADMklEQVQozyXQ3U+bVRwH8Oc/EFayjlo3ICIwC+v76/PSPu3TPn2HtaVulr6xtqFAKWUwXqRI42TCHKMMtsRoZkzmYjTxymuNF97qzW5M3N1c4g22M0ZZz9eTefHNOTkn5/M7vx8zERT+0muGWxbtcHtoQP0iEbL9/esPt8g3zQK+Ppwh9+pT+O7hGn58vILvP5nGo0YS95eihAb1vPffoTHLk6FRy8+q8wNPL/b3thk5dvnJJX/yJ43g+UWhVD5nDW+1H7w/RXJXZDQqcbKYC6Kcj2KlNI6jWhTNhRAOF0LkQS2MzYx4+oZa/XuvSv1Mqez9QzOgesG4A+yzPqP2t0Gr7qlCpXo+Nni+dWclSWIxGZzDQOwOAwIRH+ZyEdyv+nFYjaBZCZLjagjrKeHluZ7utlLR1VZ0v/bn6JvqNlO8IndM2pGO9mJ/x2caPL2Rdv+zU5sk8ckw4jGZTKejFAvjg52bOKiXsb9ewN25ADmqBLD2Lv/yrOLMSc+Z7pPurq6TkT7a8trsJIIyC86qQU7WoVkNY2/xMnYWE+RgOY7j99I4WMvh2893cLi7ioOlOO6WfaQ5H8A6BftfP9u6QKM+19PSD/e1mMr0BOE5A+FYHXFYR0kt5Sa3F2PkmA79s+0cefTFp3j45Veo5qIoJSXszUWwPxsgd8p+7JW8ZCvj6tSnXJ3NlLOznXGfMslEGCE/j2DABcnrRCQsoZhPYKGYQKU0hXsf3cDuZhlH9SwqSQFbWTf2Z3zYLXrJXkHCxyUvbpd8FH91BiZAEb8kwCs6aOzwiCzcHicknweii0XIZYBoHQNvGkHYx6KxkseH11OkMRvDdiFAtrIS2UqLpJF2kZtZkTB+twM+Crl5C3i7AU6HEU7OBMllh8DZMZsdx62NEpauTaCYiSN5NY5SKY3l5TI21+dQX53BRi2PjfmrWC2MgxFZPUQKiJz5f8yuo6sBgk0Lwa6HxBuRisvIxKVXe7PxEhw2PVxOKx2TiHeSURSKaVTmr+F6rQhGEuhvKOih4W06CFb6wPg27CYNOIp6KOK0jYIza8DS1h0WLVgK8rSwgxY0m+gda4bodiIYlPEfNe+r2essM7oAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Image rendered using the Uchimura tone mapping operator&quot;
+        title=&quot;Image rendered using the Uchimura tone mapping operator&quot;
+        src=&quot;/static/97d98e9c878f44b6813ca81a7a8604ae/eefce/01-tonemapping.png&quot;
+        srcset=&quot;/static/97d98e9c878f44b6813ca81a7a8604ae/dfaee/01-tonemapping.png 180w,
+/static/97d98e9c878f44b6813ca81a7a8604ae/4d463/01-tonemapping.png 360w,
+/static/97d98e9c878f44b6813ca81a7a8604ae/eefce/01-tonemapping.png 720w,
+/static/97d98e9c878f44b6813ca81a7a8604ae/dabea/01-tonemapping.png 1080w,
+/static/97d98e9c878f44b6813ca81a7a8604ae/f3baa/01-tonemapping.png 1280w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Image rendered using the Uchimura tone mapping operator&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;While the BGFX repo already contains an example of HDR tone-mapping, it is implemented using a chain of down-sampled textures and operators like the Uncharted and Reinhard curves. I was interested in implementing a more modern approach, so my implementation has a few differences.&lt;/p&gt;
+&lt;p&gt;It uses a compute shader to construct a luminance histogram of the input HDR framebuffer, and another that performs a weighted average using the histogram to obtain an average luminance.&lt;/p&gt;
+&lt;p&gt;The average luminance is then used to create an exposure value which we can then use to scale our input luminance, which we then feed into different tone map operators. The example includes a few different operators:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.cs.utah.edu/~reinhard/cdrom/tonemap.pdf&quot;&gt;Reinhard&lt;/a&gt; with variable white point&lt;/li&gt;
+&lt;li&gt;Unreal, based off ACES with built in gamma correction&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://32ipi028l5q82yhj72224m8j.wpengine.netdna-cdn.com/wp-content/uploads/2016/03/GdcVdrLottes.pdf&quot;&gt;Lottes&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.desmos.com/calculator/gslcdxvipg&quot;&gt;Uchimura&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;For more detail and comparisons, please see the two blog posts I’ve written documenting the process:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://bruop.github.io/exposure/&quot;&gt;Automatic Exposure Using a Luminance Histogram&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://bruop.github.io/tonemapping/&quot;&gt;Tone Mapping&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Forward vs. Deferred Rendering&lt;/h3&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/81bb0e0b8a6d5d319422a3d011fb9dd4/f3baa/02-forward-rendering.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 56.111111111111114%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAYAAAB/Ca1DAAAACXBIWXMAAAsTAAALEwEAmpwYAAADPElEQVQozw3OT2xadQAH8Bc8uU7K/7dCx5/CoED5Wwq8vpZXHq8U+mD8Ga+lBcagFGi7dW60m3NZzVzbdd2WmbglRhNNjJ6MBw8mnj3pwYsmHtTEmxcTs67TaEN+X3f/HD6U1Wr422wcfmmzml9abeYXBgv9jy8ygkqBR7mbJL2NPD56sIWvv/sWux9+iuv5NSwmc2Q2M4NOvfyvzTP1w8gY873BZPvFaNQfUaFw/DdXRPjR4gz8qqXpP4fOqI/D9nMklWBQfSdHmm8VcflGCe+93cStnQ082tnFta1NUujMoTwfO6Fp3V86nfqFSvHGkUarPKZcDPO7fXbmJ3ti+me1Xv+HYUh7zJjcZC4Xx3IjRpq353Fzr46HjRLubOfx2Zcf4+7TJ+Tdz7dwq1HqaxSKI/mg/Lly8PRz2jR8RCULU/1zDkPfGbb0uUbkhFsJ/Tft9ZNWu43eDYF093jceVbD/XIRK60ZNNYTWLqdIGuf1PDN4V1y/kK8Tyuovsc93Bez7AklbYuIZt0YT9mROZyDuM9jZjqA5soGWbwShbASQbZaw1VeQp4fQSThRXyJwcJqgnzx/j2Il4swqyl4/TpMcaOgsj2BMFUfGZs4S7hNlsRaIeL3GklKEOGsuIjQymOSP0Q0VIDdpYJYmUXlcZsslHjsrF0ibCVJzDqKRC0aEh/3EIqvRsBmfbCYVIjEnBg2aSA3nQaXiiF6kYfYSWIx28GZIRaJhAGr2xykRyXkm23UO/fgHR+BXkVhI+RALsOBSgVCyI1GweqdmHL7YbPQeM17CooYDbPoRpkZA+cIIOzjsPtmDAfbGVypT6NU6SLb24dqUAaHSoav1iXEF8KgRDoMXusHa3NBiIQg8ZPweGmoAkoIATfyAyowZjtWK+fx8GoND9o1HFwooFq4hGA6gwnVKWSMatxcTsMTkoMKGsxgxqxIhtwoshMoJCaR5oOoiwLq9lHMymSYZ8PoXqxir7uJg+V1fCC1UE1KkAeS0A0MwKxQwhY0IuCWgWLdJqQDo8gFPci/GgrpIOysEewCA8nnQPoVlipFXG+1cH+9hye1a9ifq2CJLeAsV4BO+Tq0GjVcXjV8Dgr/A61lhrvtL3hJAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Forward rendered Sponza atrium&quot;
+        title=&quot;Forward rendered Sponza atrium&quot;
+        src=&quot;/static/81bb0e0b8a6d5d319422a3d011fb9dd4/eefce/02-forward-rendering.png&quot;
+        srcset=&quot;/static/81bb0e0b8a6d5d319422a3d011fb9dd4/dfaee/02-forward-rendering.png 180w,
+/static/81bb0e0b8a6d5d319422a3d011fb9dd4/4d463/02-forward-rendering.png 360w,
+/static/81bb0e0b8a6d5d319422a3d011fb9dd4/eefce/02-forward-rendering.png 720w,
+/static/81bb0e0b8a6d5d319422a3d011fb9dd4/dabea/02-forward-rendering.png 1080w,
+/static/81bb0e0b8a6d5d319422a3d011fb9dd4/f3baa/02-forward-rendering.png 1280w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Forward rendered Sponza atrium&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;The two examples &lt;code class=&quot;language-text&quot;&gt;02-forward-rendering&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;03-deferred-rendering&lt;/code&gt; are set up to be largely identical, but with a few key differences to highlight the strengths and weaknesses of forward vs deferred rendering.&lt;/p&gt;
+&lt;p&gt;Both examples render a version of the &lt;a href=&quot;https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/Sponza&quot;&gt;Sponza scene&lt;/a&gt; that includes textures for the “metallic-roughness” workflow. We use a fairly standard single-scattering BRDF:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Trowbridge-Reitz (GGX) normal distribution&lt;/li&gt;
+&lt;li&gt;Smith correlated visibility term&lt;/li&gt;
+&lt;li&gt;Schlick Fresnel Approximation&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;With some additional GLTF features supported:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Occlusion texture&lt;/li&gt;
+&lt;li&gt;Emissive texture&lt;/li&gt;
+&lt;li&gt;Base color, emissive, metallic and roughness factors&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4&gt;Forward Rendering&lt;/h4&gt;
+&lt;p&gt;The forward renderer supports up to 255 point lights in the scene, but there is no culling of the lights evaluated per draw call, so slow down happens quickly (after about 50 lights on my machine). The light data is passed using uniform arrays and evaluated through a simple for loop. We only evaluate the BRDF if the light’s incident value is zero, which we can do since we use the non-physical fall-off function from &lt;a href=&quot;https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf&quot;&gt;Karis 2014&lt;/a&gt;. Therefore the intensity of the lights will also have an impact on performance. At lower total intensity settings (around 10.0) my computer can handle ~150 lights in the scene before it starts dropping frames regularly.&lt;/p&gt;
+&lt;p&gt;There’s also a z-prepass to reduce the amount of overdraw, which has a pretty drastic effect on performance as we don’t have any sorting of our draw calls based off depth (by default, BGFX sorts draw calls to minimize state changes).&lt;/p&gt;
+&lt;h4&gt;Deferred Rendering&lt;/h4&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/77ef246d1df02838b35d47ec2bcfaead/f3baa/03-deferred.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 56.111111111111114%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAYAAAB/Ca1DAAAACXBIWXMAAAsTAAALEwEAmpwYAAADDUlEQVQozyWRW0wbVBjHT1tq5nQElVVhaygrIKMtG4xKEejaUWa6ja6UlpZSpFw66JCulNKxtkA62cgWM2UmzEumm4nzMmeMl2wmxrjo4oPEeHnwQU2MZvFJE598/PktPvxzzvcl53d+3zlqfmaE3IlxVk7OUMqnOHVijHw6ztzxYdLJGMX5Y6Sz40yffowLK4qjixZiBRO+YiutCyF2nJxka+EcNdkrVOWuoTLJKAtzcbLzcTKzYXxP+wj5/cyM+ZicCJEIeRgdDxMUyIU1xejGPqLr+5i9ZGZ6zURtMUxN6SrBl29jff0FVCoRJjLioaJ/J7XBenrjPXj9ATEbYT4ZIuBqxx2MMvZaF6XrNvJvmlk6/wDFs9uJFOoY+ynJ4KdXyOT+pfjxphhOxSkkJ+mNdGA+2sCUrZGpoWFeOpNjOT2MzyfQ0Chr61WUVvUsnVKslDQk1muIfBbkOZ4l9ccl/LkfWFoGdSwfJlEc4HgpQCzVTdhVSWrVT+FcjGeWfVgnBjAO9jEzp8jk72f2cifx5VZGz9ST/jlL4W6WqW8X8RfukF78HaXb0KK7oUV7VYO6rGSvQ39Tx5b3tOjfktzSonlFT6e3A3tLM80OM4GAm8P9Po7I2u6zY+ncy5M9QfbYu1BqXaHekFyUPK/ksORefV1yTbKhKDurxRN9Clt3O86+eoYTDlzdnRw+4OWI24PTsZ+mBiO76wwCfFGhf19x323Flg8UD36vePg72X8hva8V2zal/qiM/fJpDf0VPD5koK2vFmNzE23OXhzOJ3B4vdib6miqrxTgDcXWDxXb/1KU/6N46EeF4ZZY/iZm3/wPf2SzjEMjVlxRC5VeA/r2cvZYd9Pe5cYTcjM4dBCD4VF2WY0CfEfGeltMvhLYrwrzJ2L2pfT+FqjYVtyRCzY1HPJ3kJiO4PY5MTWaaCuvZtI/wMZqjAmvjRaLjcaWapT23nvdlFHFZtvnih0C1vwivbsSqatkAsOfOtKZfsLeAxhN1Tjte+mptXB6dYF3X10iOWHH5e5ip2UX/wFvhKrMnuSgWgAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Composite image showing different parts of the Gbuffer and final image&quot;
+        title=&quot;Composite image showing different parts of the Gbuffer and final image&quot;
+        src=&quot;/static/77ef246d1df02838b35d47ec2bcfaead/eefce/03-deferred.png&quot;
+        srcset=&quot;/static/77ef246d1df02838b35d47ec2bcfaead/dfaee/03-deferred.png 180w,
+/static/77ef246d1df02838b35d47ec2bcfaead/4d463/03-deferred.png 360w,
+/static/77ef246d1df02838b35d47ec2bcfaead/eefce/03-deferred.png 720w,
+/static/77ef246d1df02838b35d47ec2bcfaead/dabea/03-deferred.png 1080w,
+/static/77ef246d1df02838b35d47ec2bcfaead/f3baa/03-deferred.png 1280w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Composite image showing different parts of the Gbuffer and final image&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;Meanwhile, in the deferred case we use &lt;strong&gt;light volumes&lt;/strong&gt; to calculate our shaded pixel values. We render each point light using two draw calls: one which only writes the stencil buffer, marking any pixels that we don’t want to shade, and then a second draw with the same geometry that tests against those stencil values and perform the shading, writing to the output buffer additively.&lt;/p&gt;
+&lt;p&gt;The first draw draws both back and front faces and will mark pixels using the following test:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;For front facing geometry, if it fails the depth test, those pixels are occluded by scene geometry that is in front of the volume.&lt;/li&gt;
+&lt;li&gt;For back facing geometry, if it passes the depth test, those pixels are beyond the light’s volume.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In both cases we increment the stencil buffer, and use a stencil test against &lt;code class=&quot;language-text&quot;&gt;0&lt;/code&gt; (the starting value) for the second draw call.&lt;/p&gt;
+&lt;p&gt;With this scheme, we submit 2N draw calls for N lights, but we strictly shade only pixels that fall within the light volume so we end up with significant gains in terms of the number of lights we can have in a scene. If the light volumes overlap for many pixels and many number of lights, we’ll still end up with poor performance however, as our solution basically regresses to the forward rendered solution but with extra draw calls.&lt;/p&gt;
+&lt;p&gt;With a lower total intensity (again, 10.0) my computer can evaluate about ~1000 lights before slowdown occurs. Above that, the CPU time required to perform all the state changes and submit the draw calls for all our lights starts to outpace our GPU’s ability to render frames.&lt;/p&gt;
+&lt;p&gt;Additionally, the deferred example has no support for transparency. In our Sponza scene all the vegetation is rendered using an alpha cutoff, which we can still render to our G-Buffers. There is also no support for hardward MSAA, so AA would have to be implemented using a custom solution.&lt;/p&gt;
+&lt;p&gt;Finally, the emissive lighting was applied using a full-screen quad, similar to what you’d need to do for directional lights (in fact you could probably do both in the same pass).&lt;/p&gt;
+&lt;h3&gt;Physically Based Image Based Lighting&lt;/h3&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/6b7135ce901f83cfc91f83cdb9935dba/f3baa/04-pbr-ibl.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 56.111111111111114%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAYAAAB/Ca1DAAAACXBIWXMAAAsTAAALEwEAmpwYAAADBElEQVQozx2QW29iVRiG9x9wTK0O00I79KBF3FCO+3wCNgwtBVtgD9AOlMOmRSgQLZOZtqP2GI1z5aX/ygsziYmJN8abJo6dcWJmJOt10Ysn38rKyvOt92WkCPtmlfW8WvV+/I/bNfMm4nX/e9k2yVXbxKWdIOd1A82shlLaQPtBEOc1DadVjfw0SOLHnvl2xev/47OVpesF9/x1PLLyktGM+G9hfeNnb0D4dXr6o2t22fX6omWSS9vElW2SUUXD0VddNOolZCQ/DvM8zmoGed6O49uq8t+8895fc7OOv2dnHC9F3+IrJqDzvy+ZsV+W48qLKafzT4979vV5K0nOm4lb4bAoISEFkE5ICHnuo5+L3govdg0M88LY8eHUzd3pqZsPpt6/YZdcN0yvqIz3tuTxfl4e25+L73qW+vbCTpGzxkSYJIMtDnOuWcw5HVgLzeObRzpOtjXybEfH07JGOll+3MkK405OGA8LyjvmYn8d33czeH6wgR966/iuk8ZZ08RpPU4ouGqZ4H0LCC7O4Kxq4IhWcDypoaKRp2Udx9sGXRDDs0dxfE1h+ntlMrAtUtuKkS/KSXK0t0lO2lly0lzDcT1JLtsprAte5KOf4rQWw5OH8gTy2FIwKsrksKiQkaWSxyWNPKkYhMnl0tjcXIeqSzBNBXbDwqC3i8PBLk5GNhrVHLwuBx74llBIRNGvpDGsmDgo6jgoaOgXVAyLKr60NIxKOhhdk6CqAjRNhE6lhiFTsY6NTBLVnTzKRgia8w7SrveQmb+DVjlLF9bQbZfQaVroNAo4sC30W0X06ptgVJmDToVxKopRoSxFIQlhyAoPPeBBwXMXO6H72OcWscctIG1qt4keWjlsV7bQrJfR7dYxHLYpNhiRC0IWQpD5EBQxDFWKQKOIfBARvwe81w3eMwPzk3tIsfTMrUKgyPSNPPmMIWFtLYHMRgrZXIoKIyzEqA9CmIUc9d9Okc7JvcSxiEZ8CAVZhP0rCLPL4MJeSLyfpqBiPgBJpJVoAk3EQZSj+B/AmpKu9K/YRQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Flight Helmet model rendered using image based lighting&quot;
+        title=&quot;Flight Helmet model rendered using image based lighting&quot;
+        src=&quot;/static/6b7135ce901f83cfc91f83cdb9935dba/eefce/04-pbr-ibl.png&quot;
+        srcset=&quot;/static/6b7135ce901f83cfc91f83cdb9935dba/dfaee/04-pbr-ibl.png 180w,
+/static/6b7135ce901f83cfc91f83cdb9935dba/4d463/04-pbr-ibl.png 360w,
+/static/6b7135ce901f83cfc91f83cdb9935dba/eefce/04-pbr-ibl.png 720w,
+/static/6b7135ce901f83cfc91f83cdb9935dba/dabea/04-pbr-ibl.png 1080w,
+/static/6b7135ce901f83cfc91f83cdb9935dba/f3baa/04-pbr-ibl.png 1280w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Flight Helmet model rendered using image based lighting&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;Since I had a GLTF model loader, I figured it would be nice to be able to render them using image based lighting. BGFX already has an example for IBL, but it relies on external software to generate the pre-filtered environment maps, which was actually exactly the part I wanted to understand better. So I decided to implement IBL “from scratch” using &lt;a href=&quot;https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf&quot;&gt;Karis 2014&lt;/a&gt; as a guide, and then augmenting the BRDF with recent work on multi-scattering BRDFs. So this example includes compute shaders for generating the BRDF LUT, pre-filtered environment map and irradiance map.&lt;/p&gt;
+&lt;p&gt;I wrote an extensive overview of the implemention in &lt;a href=&quot;https://bruop.github.io/ibl/&quot;&gt;a blog post&lt;/a&gt;, so if you’re interested in more detail please check that out! It was a really fun project.&lt;/p&gt;
+&lt;h3&gt;Cascaded Shadow Maps&lt;/h3&gt;
+&lt;p&gt;&lt;figure class=&quot;gatsby-resp-image-figure&quot; style=&quot;&quot;&gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto; max-width: 720px; &quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/53ca6c35c4cf363b98d95c1e85131ac0/88b03/05-shadow-mapping.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 52.77777777777778%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAYAAAB/Ca1DAAAACXBIWXMAAAsTAAALEwEAmpwYAAADJklEQVQozx2SX2hbVQDGT6esarYmaZJ7c5N7k/sv909v0iR3adM2zdql6x+b2cWtW+xKp1YmK2VgrVrQkdbWdVjWbTLLHlYqcy/WBxEEBZGBIAjuQXxxRZwyBHGgDyqCRT2fJznwcThw+PHxfR8xdOM3IRz+nQt4/7F1Ed25JE2acbipBPJuGzqzFg52Z1Eq5hr3xHgZF5YW6PVraygdOrirZUo7it35g6LE/zTUKEgy33c3yIUfMOBubz6Nvh6XWmoEkyfKKHZlcPTxfpQHe5kKGD1cwNzsNMYrw3SyWoFl6n/bB0rfiLJ1V5PFP9ptGcTocu/rduLX1aX53eXzL0AROWrrEZw4OoQU+/D0xBMoMmfV46NYWXwJt965hpHDRZpNWZBjwq6RLuwIonovzAX/stUwiCaG0G7GcP3KEp0+PQ4+sJ+m21RUjw2j03VwbuZZVEYKuHF1FdsfrOPq5gXUFuZoJ4tDiYUp079CyPefIoaoowuU6EqEZhyFvr1ew+yZSZp2NCQUAWPlAeTTGt69cRnrb61huzaPs9UBPHe6AichQZU4Kko8ZJGDHueRdWQwIIitS7Su5drL9PjYIDKORmXBj8UXn0fl5Di23tvEudoljBWymD01iK9uf1qPg8YiXkSlAHUMmbpJhbabIm3TWSmOKSMWacXoUBFf3/kcl1Zr8LU0YW1jDldu3sJTb3yCjr4pHDo2hDs7n+HBz7+gvzsFkWtBQgrB1CKQhACLTUIDWLdrqwIyloTXXpnB1sZFHHl1GNMfn8HIUB795Ql0lCax9eFHqJ+Ly+ehMneGxEFo3Yd4NAA1xsNijBB7k5XXF3FkZACWziPob0Y+ZWLmzSp6FrrQrYo41ZvD/MpmA/bT/XvocU04RhQxnwfBh/agLSHCUMJo8TRj36N7Qba338fUM1MgHoL9gWYIwRY8wj2MaJLDk7wfN89O4ctvv2gA11gcuuhDls1J4b1QWFSaFITf62F6DCZzSaonq3A7XBAfAfET7Gltgie4FzxpQqqZ4PbmRgP24/ffoTdnIck2eiAZh8/Pw+tlDce4Rgf1ZeTaNfwPf0WGap09JEEAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Cascaded Shadow Maps&quot;
+        title=&quot;Cascaded Shadow Maps&quot;
+        src=&quot;/static/53ca6c35c4cf363b98d95c1e85131ac0/eefce/05-shadow-mapping.png&quot;
+        srcset=&quot;/static/53ca6c35c4cf363b98d95c1e85131ac0/dfaee/05-shadow-mapping.png 180w,
+/static/53ca6c35c4cf363b98d95c1e85131ac0/4d463/05-shadow-mapping.png 360w,
+/static/53ca6c35c4cf363b98d95c1e85131ac0/eefce/05-shadow-mapping.png 720w,
+/static/53ca6c35c4cf363b98d95c1e85131ac0/dabea/05-shadow-mapping.png 1080w,
+/static/53ca6c35c4cf363b98d95c1e85131ac0/87339/05-shadow-mapping.png 1440w,
+/static/53ca6c35c4cf363b98d95c1e85131ac0/88b03/05-shadow-mapping.png 1920w&quot;
+        sizes=&quot;(max-width: 720px) 100vw, 720px&quot;
+        style=&quot;width:100%;height:100%;margin:0;vertical-align:middle;position:absolute;top:0;left:0;&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+    &lt;figcaption class=&quot;gatsby-resp-image-figcaption&quot;&gt;Cascaded Shadow Maps&lt;/figcaption&gt;
+  &lt;/figure&gt;&lt;/p&gt;
+&lt;p&gt;Having never worked with shadow maps I figured it’d be a good idea to try and implement one of the more complicated shadow mapping algorithms, cascaded shadow mapping.&lt;/p&gt;
+&lt;p&gt;The idea is simple: render many different shadow maps that cover different parts of your view frustum to maximize the shadow map density closer to the camera, allowing for fewer “perspective aliasing” artifacts. However, the exact placement of the cascades can be simple, manual or it can be more involved.&lt;/p&gt;
+&lt;p&gt;In this example, the cascades are placed by using a logarithmic placement algorithm (eq 7.5 in &lt;a href=&quot;http://www.realtimerendering.com/&quot;&gt;RTR Vol 4&lt;/a&gt;) and bounded using a depth reduction step (performed on the GPU using compute shaders). The min and max depth values are stored inside a 1x1 texture and read back on the CPU, which uses the data to determine each cascade’s view frustum.&lt;/p&gt;
+&lt;p&gt;The view frustum is further constrained using the scene axis-aligned bounding box, to ensure that the near and far planes are beyond the scene geometry and that the left, right, top and bottom planes do not exceed the bound of the scene.&lt;/p&gt;
+&lt;p&gt;This maximizes our effective shadow map resolution, but it does come with some drawbacks. For one, there’s no way for us to really “clamp” the movement of our cascades to texel sized increments as the world space size of our texel is constantly changing, so we still experience the pixel crawl of unstabilized cascades.&lt;/p&gt;
+&lt;p&gt;I’ve also added percentage close filtering (PCF) using a randomly oriented poisson disk, as explained in &lt;a href=&quot;https://www.realtimeshadows.com/sites/default/files/Playing%20with%20Real-Time%20Shadows_0.pdf&quot;&gt;this presentation by Kaysan&lt;/a&gt;. My implementation is a bit simpler however, and I just perform the 16 taps with the same size in light space for all pixels which don’t self occlude.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Image Based Lighting with Multiple Scattering]]></title><description><![CDATA[Introduction and Background Recently I decided to implement image based lighting in BGFX, since I had never done so before and it’s a great…]]></description><link>https://bruop.github.com/ibl/</link><guid isPermaLink="false">https://bruop.github.com/ibl/</guid><pubDate>Mon, 19 Aug 2019 15:00:00 GMT</pubDate><content:encoded>&lt;h2&gt;Introduction and Background&lt;/h2&gt;
 &lt;p&gt;Recently I decided to implement image based lighting in BGFX, since I had never done so before and it’s a great way to produce realistic renders with assets authored for PBR. As I started reading I realized that approaches had gotten a lot more involved than they had been even 10 years ago, and that it might be useful to others to have a reference for implementation from start to finish. I’ve documented the steps involved in implementation, starting with some background, then moving onto &lt;a href=&quot;https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf&quot;&gt;Karis’s 2014 paper&lt;/a&gt; explaining Unreal’s IBL implementation, and then finally new approaches from &lt;a href=&quot;http://www.jcgt.org/published/0008/01/03/paper.pdf&quot;&gt;Fdez-Agüera&lt;/a&gt; and others to address the error present in existing models.&lt;/p&gt;
 &lt;p&gt;Let’s start by defining the equation which defines the outgoing radiance from a point &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-mathml&quot;&gt;&lt;math xmlns=&quot;http://www.w3.org/1998/Math/MathML&quot;&gt;&lt;semantics&gt;&lt;mrow&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;p&lt;/mi&gt;&lt;/mrow&gt;&lt;annotation encoding=&quot;application/x-tex&quot;&gt;\mathbf{p}&lt;/annotation&gt;&lt;/semantics&gt;&lt;/math&gt;&lt;/span&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.63888em;vertical-align:-0.19444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot;&gt;p&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; in the viewing direction &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-mathml&quot;&gt;&lt;math xmlns=&quot;http://www.w3.org/1998/Math/MathML&quot;&gt;&lt;semantics&gt;&lt;mrow&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;v&lt;/mi&gt;&lt;/mrow&gt;&lt;annotation encoding=&quot;application/x-tex&quot;&gt;\mathbf{v}&lt;/annotation&gt;&lt;/semantics&gt;&lt;/math&gt;&lt;/span&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.44444em;vertical-align:0em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot; style=&quot;margin-right:0.01597em;&quot;&gt;v&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;:&lt;/p&gt;
 &lt;span class=&quot;katex-display&quot;&gt;&lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-mathml&quot;&gt;&lt;math xmlns=&quot;http://www.w3.org/1998/Math/MathML&quot; display=&quot;block&quot;&gt;&lt;semantics&gt;&lt;mrow&gt;&lt;msub&gt;&lt;mi&gt;L&lt;/mi&gt;&lt;mi&gt;o&lt;/mi&gt;&lt;/msub&gt;&lt;mo stretchy=&quot;false&quot;&gt;(&lt;/mo&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;v&lt;/mi&gt;&lt;mo stretchy=&quot;false&quot;&gt;)&lt;/mo&gt;&lt;mo&gt;=&lt;/mo&gt;&lt;msub&gt;&lt;mo&gt;∫&lt;/mo&gt;&lt;mi mathvariant=&quot;normal&quot;&gt;Ω&lt;/mi&gt;&lt;/msub&gt;&lt;msub&gt;&lt;mi&gt;f&lt;/mi&gt;&lt;mtext&gt;brdf&lt;/mtext&gt;&lt;/msub&gt;&lt;mo stretchy=&quot;false&quot;&gt;(&lt;/mo&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;v&lt;/mi&gt;&lt;mo separator=&quot;true&quot;&gt;,&lt;/mo&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;l&lt;/mi&gt;&lt;mo stretchy=&quot;false&quot;&gt;)&lt;/mo&gt;&lt;msub&gt;&lt;mi&gt;L&lt;/mi&gt;&lt;mi&gt;i&lt;/mi&gt;&lt;/msub&gt;&lt;mo stretchy=&quot;false&quot;&gt;(&lt;/mo&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;l&lt;/mi&gt;&lt;mo stretchy=&quot;false&quot;&gt;)&lt;/mo&gt;&lt;mo stretchy=&quot;false&quot;&gt;⟨&lt;/mo&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;n&lt;/mi&gt;&lt;mo&gt;⋅&lt;/mo&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;l&lt;/mi&gt;&lt;mo stretchy=&quot;false&quot;&gt;⟩&lt;/mo&gt;&lt;mi&gt;d&lt;/mi&gt;&lt;mi mathvariant=&quot;bold&quot;&gt;l&lt;/mi&gt;&lt;/mrow&gt;&lt;annotation encoding=&quot;application/x-tex&quot;&gt;L_o(\mathbf{v}) = \int_{\Omega} f_{\text{brdf}}(\mathbf{v}, \mathbf{l}) L_i(\mathbf{l}) \langle\mathbf{n} \cdot \mathbf{l}\rangle d\mathbf{l}&lt;/annotation&gt;&lt;/semantics&gt;&lt;/math&gt;&lt;/span&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;L&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.151392em;&quot;&gt;&lt;span style=&quot;top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;o&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot; style=&quot;margin-right:0.01597em;&quot;&gt;v&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2777777777777778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2777777777777778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:2.27195em;vertical-align:-0.9119499999999999em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mop&quot;&gt;&lt;span class=&quot;mop op-symbol large-op&quot; style=&quot;margin-right:0.44445em;position:relative;top:-0.0011249999999999316em;&quot;&gt;∫&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:-0.433619em;&quot;&gt;&lt;span style=&quot;top:-1.7880500000000001em;margin-left:-0.44445em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;Ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.9119499999999999em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.16666666666666666em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.33610799999999996em;&quot;&gt;&lt;span style=&quot;top:-2.5500000000000003em;margin-left:-0.10764em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord text mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;brdf&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot; style=&quot;margin-right:0.01597em;&quot;&gt;v&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mpunct&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.16666666666666666em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot;&gt;l&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;L&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.31166399999999994em;&quot;&gt;&lt;span style=&quot;top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;i&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot;&gt;l&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;⟨&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot;&gt;n&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222222222222222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;⋅&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222222222222222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot;&gt;l&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;⟩&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;d&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathbf&quot;&gt;l&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
