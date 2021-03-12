@@ -217,6 +217,7 @@ data-styled.g12[id="blog_post_date__BlogPostDate-a24z31-0"]{content:"kzsTZW,"}/*
 <p>The geometric average is susceptible to extreme values being over-represented in the final luminance value, so instead we’re going to construct the histogram. This allows us more control (if we desire it) over how extreme values influence our “average” — with a histogram, we can choose to use other features, like the median, if we wanted to. For now, we’ll stick with the average.</p>
 <h3>Constructing the Luminance Histogram</h3>
 <p>To construct the histogram, I used <a href="http://www.alextardif.com/HistogramLuminance.html">Alex Tardif’s</a> blog post on the exact same subject as a reference. I’ll still explain the code here, and try to focus on the parts that confused me the most while trying to replicate Tardif’s method. Here’s the compute shader, written using BGFX’s version of glsl:</p>
+<p><strong>Update:</strong> I’ve fixed a bug with the two compute shaders below. They previously used <code class="language-text">groupMemoryBarrier</code>s for synchronization, but that was inadequate as we really wanted both an execution and a group memory barrier. Due to the fact that BGFX’s <code class="language-text">shaderc</code> will actually translate that GLSL into <code class="language-text">GroupMemoryBarrierWithGroupSync()</code> and the fact that I only ran the samples using the DX11 backend, I never ran into the issue myself. Thanks to users Cirdan and marttyfication on the <a href="https://discord.gg/uBqpJxfk">Graphics Programming Discord</a> for encountering the bug and letting me know the solution, respectively.</p>
 <div class="gatsby-highlight" data-language="glsl"><pre class="language-glsl"><code class="language-glsl"><span class="token comment">// This defines all the preprocessor definitions that translate things</span>
 <span class="token comment">// like gl_LocalInvocationIndex to HLSL's SV_GroupIndex</span>
 <span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">include</span> <span class="token string">&lt;bgfx_compute.sh></span></span>
@@ -265,7 +266,7 @@ SHARED <span class="token keyword">uint</span> histogramShared<span class="token
 <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
   <span class="token comment">// Initialize the bin for this thread to 0</span>
   histogramShared<span class="token punctuation">[</span>gl_LocalInvocationIndex<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
-  <span class="token function">groupMemoryBarrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token function">barrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
 
   <span class="token keyword">uvec2</span> dim <span class="token operator">=</span> <span class="token function">imageSize</span><span class="token punctuation">(</span>s_texColor<span class="token punctuation">)</span><span class="token punctuation">.</span>xy<span class="token punctuation">;</span>
   <span class="token comment">// Ignore threads that map to areas beyond the bounds of our HDR image</span>
@@ -279,7 +280,7 @@ SHARED <span class="token keyword">uint</span> histogramShared<span class="token
 
   <span class="token comment">// Wait for all threads in the work group to reach this point before adding our</span>
   <span class="token comment">// local histogram to the global one</span>
-  <span class="token function">groupMemoryBarrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token function">barrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
 
   <span class="token comment">// Technically there's no chance that two threads write to the same bin here,</span>
   <span class="token comment">// but different work groups might! So we still need the atomic add.</span>
@@ -352,7 +353,7 @@ SHARED <span class="token keyword">uint</span> histogramShared<span class="token
   <span class="token keyword">uint</span> countForThisBin <span class="token operator">=</span> histogram<span class="token punctuation">[</span>localIndex<span class="token punctuation">]</span><span class="token punctuation">;</span>
   histogramShared<span class="token punctuation">[</span>localIndex<span class="token punctuation">]</span> <span class="token operator">=</span> countForThisBin <span class="token operator">*</span> localIndex<span class="token punctuation">;</span>
 
-  <span class="token function">groupMemoryBarrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token function">barrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
 
   <span class="token comment">// Reset the count stored in the buffer in anticipation of the next pass</span>
   histogram<span class="token punctuation">[</span>localIndex<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
@@ -364,7 +365,7 @@ SHARED <span class="token keyword">uint</span> histogramShared<span class="token
       histogramShared<span class="token punctuation">[</span>localIndex<span class="token punctuation">]</span> <span class="token operator">+=</span> histogramShared<span class="token punctuation">[</span>localIndex <span class="token operator">+</span> cutoff<span class="token punctuation">]</span><span class="token punctuation">;</span>
     <span class="token punctuation">}</span>
 
-    <span class="token function">groupMemoryBarrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">barrier</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
   <span class="token punctuation">}</span>
 
   <span class="token comment">// We only need to calculate this once, so only a single thread is needed.</span>
